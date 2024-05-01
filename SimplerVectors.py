@@ -4,6 +4,7 @@ import pickle
 import json
 import h5py
 import enum
+from  vector_functions import calculate_cosine_similarities_manual, _calculate_cosine_distances
 from scipy.spatial.distance import cdist, hamming
 
 
