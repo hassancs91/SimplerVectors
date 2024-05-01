@@ -1,7 +1,17 @@
 import numpy as np
 import os
 import pickle
-from scipy.spatial.distance import cdist
+import json
+import h5py
+import enum
+from scipy.spatial.distance import cdist, hamming
+
+
+class SerializationFormat(enum.Enum):
+    BINARY = 'pickle'
+    JSON = 'json'
+    HIERARCHICAL = 'hdf5'
+
 
 class VectorDatabase:
     def __init__(self, db_folder):
@@ -11,7 +21,66 @@ class VectorDatabase:
         if not os.path.exists(self.db_folder):
             os.makedirs(self.db_folder)
 
-    def load_from_disk(self, collection_name):
+    def load_from_disk(self, collection_name, serialization_format=SerializationFormat.BINARY):
+        file_path = os.path.join(self.db_folder, collection_name + '.svdb')
+        if serialization_format == SerializationFormat.BINARY:
+            self._load_pickle(file_path)
+        elif serialization_format == SerializationFormat.JSON:
+            self._load_json(file_path)
+        elif serialization_format == SerializationFormat.HIERARCHICAL:
+            self._load_hdf5(file_path)
+
+    def save_to_disk(self, collection_name, serialization_format=SerializationFormat.BINARY):
+        file_path = os.path.join(self.db_folder, collection_name + '.svdb')
+        if serialization_format == SerializationFormat.BINARY:
+            self._save_pickle(file_path)
+        elif serialization_format == SerializationFormat.JSON:
+            self._save_json(file_path)
+        elif serialization_format == SerializationFormat.HIERARCHICAL:
+            self._save_hdf5(file_path)
+
+    def _load_pickle(self, file_path):
+        if os.path.exists(file_path):
+            with open(file_path, 'rb') as file:
+                self.vectors, self.metadata = pickle.load(file)
+        else:
+            self.vectors, self.metadata = [], []
+
+    def _save_pickle(self, file_path):
+        with open(file_path, 'wb') as file:
+            pickle.dump((self.vectors, self.metadata), file)
+
+    def _load_json(self, file_path):
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+                self.vectors = [np.array(vec) for vec in data['vectors']]
+                self.metadata = data['metadata']
+        else:
+            self.vectors, self.metadata = [], []
+
+    def _save_json(self, file_path):
+        data = {'vectors': [vec.tolist() for vec in self.vectors], 'metadata': self.metadata}
+        with open(file_path, 'w') as file:
+            json.dump(data, file)
+
+    def _load_hdf5(self, file_path):
+        if os.path.exists(file_path):
+            with h5py.File(file_path, 'r') as file:
+                self.vectors = [np.array(file['vectors'][str(i)]) for i in range(len(file['vectors']))]
+                self.metadata = [json.loads(str(file['metadata'][str(i)])) for i in range(len(file['metadata']))]
+        else:
+            self.vectors, self.metadata = [], []
+
+    def _save_hdf5(self, file_path):
+        with h5py.File(file_path, 'w') as file:
+            group_vectors = file.create_group('vectors')
+            group_metadata = file.create_group('metadata')
+            for i, (vec, meta) in enumerate(zip(self.vectors, self.metadata)):
+                group_vectors.create_dataset(str(i), data=np.array(vec))
+                group_metadata.create_dataset(str(i), data=json.dumps(meta))
+
+    def load_from_disk_old(self, collection_name):
         file_path = os.path.join(self.db_folder, collection_name + '.svdb')
         if os.path.exists(file_path):
             with open(file_path, 'rb') as file:
@@ -19,16 +88,58 @@ class VectorDatabase:
         else:
             self.vectors, self.metadata = [], []
 
-    def save_to_disk(self, collection_name):
+    def save_to_disk_old(self, collection_name):
         file_path = os.path.join(self.db_folder, collection_name + '.svdb')
         with open(file_path, 'wb') as file:
             pickle.dump((self.vectors, self.metadata), file)
 
-    def add_vector(self, vector, meta):
+    @staticmethod
+    def normalize_vector(vector):
+        norm = np.linalg.norm(vector)
+        if norm == 0:
+            return vector  # Prevents division by zero
+        return vector / norm
+
+    def add_vector(self, vector, meta, normalize=False):
+        if normalize:
+            vector = self.normalize_vector(vector)
         self.vectors.append(vector)
         self.metadata.append(meta)
 
-    def find_similar(self, vector, top_n=10):
+    def add_vectors_batch(self, vectors_with_meta, normalize=False):
+        for vector, meta in vectors_with_meta:
+            self.add_vector(vector, meta, normalize=normalize)
+
+    def find_similar_with_cosine(self, vector, top_n=10):
+        return self.find_similar(vector, top_n, 'cosine')
+
+    def find_similar_with_euclidean(self, vector, top_n=10):
+        return self.find_similar(vector, top_n, 'euclidean')
+
+    def find_similar_with_manhattan(self, vector, top_n=10):
+        return self.find_similar(vector, top_n, 'cityblock')
+
+
+
+    def find_similar_with_hamming_distance(self, vector, top_n=10):
+        if not self.vectors:
+            return []
+        vectors_matrix = np.array(self.vectors)
+        distances = np.array([hamming(vector, v) for v in vectors_matrix])
+        top_indices = np.argsort(distances)[:top_n]
+        return [(self.metadata[i], distances[i]) for i in top_indices]
+    
+    def find_similar(self, vector, top_n, metric):
+        if not self.vectors:
+            return []
+        vectors_matrix = np.array(self.vectors)
+        distances = cdist([vector], vectors_matrix, metric)
+        if metric == 'cosine':
+            distances = 1 - distances  # Cosine similarity is 1 - cosine distance
+        top_indices = np.argsort(distances[0])[:top_n]
+        return [(self.metadata[i], distances[0][i]) for i in top_indices]
+
+    def find_similar_old(self, vector, top_n=10):
         if not self.vectors:
             return []
         vectors_matrix = np.array(self.vectors)
@@ -82,35 +193,50 @@ class VectorDatabase:
         for i in range(start, min(end, len(self.vectors))):
             if self.metadata[i].get(key) == value:
                 self.vectors[i] = new_vector
-# Example usage
-# db = VectorDatabase('vd.db')
 
-# # Add some vectors to the database
-# vectors_to_add = [
-#     (np.array([0.1, 0.2, 0.3]), {'id': 1, 'description': 'First vector'}),
-#     (np.array([0.4, 0.1, 0.6]), {'id': 2, 'description': 'Second vector'}),
-#     (np.array([0.7, 0.8, 0.9]), {'id': 3, 'description': 'Third vector'}),
-#     (np.array([0.1, 0.5, 0.9]), {'id': 4, 'description': 'Fourth vector'}),
-#     (np.array([0.9, 0.4, 0.2]), {'id': 5, 'description': 'Fifth vector'}),
-#     (np.array([0.3, 0.6, 0.1]), {'id': 6, 'description': 'Sixth vector'}),
-#     (np.array([0.8, 0.8, 0.2]), {'id': 7, 'description': 'Seventh vector'}),
-#     (np.array([0.5, 0.4, 0.6]), {'id': 8, 'description': 'Eighth vector'}),
-#     (np.array([0.2, 0.3, 0.7]), {'id': 9, 'description': 'Ninth vector'}),
-#     (np.array([0.4, 0.4, 0.4]), {'id': 10, 'description': 'Tenth vector'}),
-# ]
+    def update_vectors_batch(self, key, value, new_vectors):
+        for i, meta in enumerate(self.metadata):
+            if meta.get(key) == value:
+                try:
+                    self.vectors[i] = new_vectors.pop(0)
+                except IndexError:
+                    break  # No more vectors to update
 
-# for vector, meta in vectors_to_add:
-#     db.add_vector(vector, meta)
+    def delete_vectors_batch(self, key, value):
+        to_delete = [i for i, meta in enumerate(self.metadata) if meta.get(key) == value]
+        for i in sorted(to_delete, reverse=True):
+            del self.vectors[i]
+            del self.metadata[i]
 
-# # Save the database to disk
-# db.save_to_disk()
+    def filter_by_metadata(self, criteria):
+        """
+        Filter vectors by multiple metadata criteria.
+        Args:
+            criteria (dict): A dictionary of metadata criteria.
+        Returns:
+            List of tuples (vector, metadata) that match all the criteria.
+        """
+        results = []
+        for vec, meta in zip(self.vectors, self.metadata):
+            if all(meta.get(k) == v for k, v in criteria.items()):
+                results.append((vec, meta))
+        return results
 
-# # Let's simulate a scenario where we load the database from disk
-# db = VectorDatabase('vd.db')
-# db.load_from_disk()
+    def filter_by_metadata_range(self, key, min_val, max_val):
+        """
+        Filter vectors by a range of values for a numeric metadata key.
+        Args:
+            key (str): The metadata key.
+            min_val (numeric): The minimum value for the range.
+            max_val (numeric): The maximum value for the range.
+        Returns:
+            List of tuples (vector, metadata) where metadata[key] falls within the range.
+        """
+        results = []
+        for vec, meta in zip(self.vectors, self.metadata):
+            value = meta.get(key)
+            if value is not None and min_val <= value <= max_val:
+                results.append((vec, meta))
+        return results
 
-# # Now, let's find vectors similar to a new query vector
-# query_vector = np.array([0.5, 0.5, 0.5])
-# similar_vectors = db.find_similar_advanced(query_vector, top_n=5)
 
-# print(similar_vectors)

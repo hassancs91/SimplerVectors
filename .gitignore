@@ -1,0 +1,15 @@
+.env
+venv/
+**/__pycache__/
+.pytest_cache/
+/Tests
+/my_tests
+/old_codes
+/dist
+/codes
+/build
+/SimplerLLM.egg-info
+.pypirc 
+generate_images.py
+generate_text.py
+chunk_text.py
