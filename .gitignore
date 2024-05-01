@@ -13,5 +13,6 @@ venv/
 test_1.py
 test_2.py
 /mydb
-
+vector_functions.py
 old_simplervectors.py
+/data
