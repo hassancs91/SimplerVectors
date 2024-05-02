@@ -9,10 +9,5 @@ SimplerVectors is a straightforward, beginner-friendly vector database project d
 - **Vector Normalization and Search**: Supports automatic vector normalization and cosine similarity searches to find the top similar vectors.
 - **Scalability in Development**: Focuses on enhancements for handling growing data volumes and increasing query demands as development progresses.
 
-## Installation
 
-Clone the repository and navigate to the project directory:
-
-```bash
-git clone https://github.com/yourusername/VectorDB.git
-cd VectorDB
+Stay Tuned... something big is coming soon !
