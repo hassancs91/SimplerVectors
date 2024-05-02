@@ -16,3 +16,7 @@ test_2.py
 vector_functions.py
 old_simplervectors.py
 /data
+embeddings.py
+test_rag.py
+chunker.py
+doc.txt
