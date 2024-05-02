@@ -1,6 +1,6 @@
 # SimplerVectors
 
-SimplerVectors is a straightforward, beginner-friendly vector database project designed for efficiently handling and querying large-scale high-dimensional data vectors. This project is especially suited for applications like language models in retrieval-augmented generation (RAG) projects. Currently in its early stages, VectorDB aims to achieve high performance and scalability, making it ideal for managing very large datasets.
+SimplerVectors is a straightforward, beginner-friendly vector database project designed for efficiently handling and querying large-scale high-dimensional data vectors. This project is especially suited for applications like language models in retrieval-augmented generation (RAG) projects. Currently in its early stages, SimplerVectors aims to achieve high performance and scalability, making it ideal for managing very large datasets.
 
 ## Features
 
