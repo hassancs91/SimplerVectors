@@ -14,9 +14,10 @@ test_1.py
 test_2.py
 /mydb
 vector_functions.py
-old_simplervectors.py
+update_simplervectors.py
 /data
 embeddings.py
-test_rag.py
+#test_rag.py
 chunker.py
 doc.txt
+/VDB

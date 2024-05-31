@@ -1,4 +1,4 @@
-from SimplerVectors import VectorDatabase
+from SimplerVectors_core import VectorDatabase
 from embeddings import get_embedding
 
 # Sample document consisting of 10 sentences
@@ -19,7 +19,7 @@ documents = [
 embedded_documents = [get_embedding(doc) for doc in documents]
 
 
-db = VectorDatabase('data')
+db = VectorDatabase('VDB')
 
 # Adding each vector to the database with some metadata (e.g., the document it came from)
 for idx, emb in enumerate(embedded_documents):
@@ -27,7 +27,7 @@ for idx, emb in enumerate(embedded_documents):
 
 
 # Save the database to disk (choose a collection name, e.g., "test_collection")
-db.save_to_disk("test.db")
+db.save_to_disk("test_json")
 
 
 # Example query

@@ -10,4 +10,22 @@ SimplerVectors is a straightforward, beginner-friendly vector database project d
 - **Scalability in Development**: Focuses on enhancements for handling growing data volumes and increasing query demands as development progresses.
 
 
+## Usage
+
+### Initializing the Database
+
+
+### Adding Vectors
+Add vectors to the database with optional metadata:
+
+
+### Querying the Database
+Perform a cosine similarity search to find the top 5 vectors similar to a given query vector:
+
+## Contributing
+Contributions are welcome! This project is still in its early stages, and your input can help shape its future. Please fork the repository, create your feature branch, and submit pull requests.
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
 Stay Tuned... something big is coming soon !

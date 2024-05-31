@@ -1,11 +1,11 @@
 import numpy as np
 import os
-import pickle
+import json
 import enum
 
 
 class SerializationFormat(enum.Enum):
-    BINARY = 'pickle'
+    JSON = 'json'
 
 class VectorDatabase:
     def __init__(self, db_folder):
@@ -15,26 +15,29 @@ class VectorDatabase:
         if not os.path.exists(self.db_folder):
             os.makedirs(self.db_folder)
 
-    def load_from_disk(self, collection_name, serialization_format=SerializationFormat.BINARY):
+    def load_from_disk(self, collection_name, serialization_format=SerializationFormat.JSON):
         file_path = os.path.join(self.db_folder, collection_name + '.svdb')
-        if serialization_format == SerializationFormat.BINARY:
-            self._load_pickle(file_path)
+        if serialization_format == SerializationFormat.JSON:
+            self._load_json(file_path)
 
-    def save_to_disk(self, collection_name, serialization_format=SerializationFormat.BINARY):
+    def save_to_disk(self, collection_name, serialization_format=SerializationFormat.JSON):
         file_path = os.path.join(self.db_folder, collection_name + '.svdb')
-        if serialization_format == SerializationFormat.BINARY:
-            self._save_pickle(file_path)
+        if serialization_format == SerializationFormat.JSON:
+            self._save_json(file_path)
 
-    def _load_pickle(self, file_path):
+    def _load_json(self, file_path):
         if os.path.exists(file_path):
-            with open(file_path, 'rb') as file:
-                self.vectors, self.metadata = pickle.load(file)
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+                self.vectors = [np.array(vec) for vec in data['vectors']]
+                self.metadata = data['metadata']
         else:
             self.vectors, self.metadata = [], []
 
-    def _save_pickle(self, file_path):
-        with open(file_path, 'wb') as file:
-            pickle.dump((self.vectors, self.metadata), file)
+    def _save_json(self, file_path):
+        data = {'vectors': [vec.tolist() for vec in self.vectors], 'metadata': self.metadata}
+        with open(file_path, 'w') as file:
+            json.dump(data, file)
 
 
     @staticmethod
